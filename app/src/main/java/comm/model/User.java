@@ -1,5 +1,7 @@
 package comm.model;
 
+import android.location.Location;
+
 /**
  * Created by Alexander on 24/10/2017.
  */
@@ -7,6 +9,8 @@ package comm.model;
 public class User {
     private Integer id;
     private String name;
+
+    private LocationMap location;
 
     private String currentMode;
 
@@ -17,8 +21,11 @@ public class User {
         this.id = id;
         this.name = name;
 
+        location = new LocationMap(id, 0.0, 0.0);
+
         currentMode = MODE_PASSENGER;
     }
+
 
     public String getName() {
         return name;
@@ -41,5 +48,8 @@ public class User {
         }
     }
 
+    public void setLatLng(Location loc) {
+
+    }
 }
 

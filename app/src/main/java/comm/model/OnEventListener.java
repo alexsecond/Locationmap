@@ -10,5 +10,8 @@ public interface OnEventListener extends EventListener {
     public void onReceiveLocations(LocationMap [] locations);
 
     public void onReceiveMessages(Object message);
+
+    public void onDriverDisconnect(int id);
+
 }
 

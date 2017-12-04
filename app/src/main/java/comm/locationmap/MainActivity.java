@@ -39,6 +39,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import java.util.HashMap;
 
 import comm.controller.ControllerLocation;
+import comm.model.EventsMainActivity;
 import comm.model.JSONManager;
 import comm.model.LocationMap;
 import comm.model.User;
@@ -64,6 +65,8 @@ public class MainActivity extends AppCompatActivity
     private Handler handler;
 
     private HashMap<Integer, Marker> markerMaps = new HashMap<Integer, Marker>();
+
+    private EventsMainActivity myEvents;
 
     static final int PLACE_PICKER_REQUEST = 1;
     static final int PERMISO_LOCALIZACION = 2;
@@ -122,11 +125,10 @@ public class MainActivity extends AppCompatActivity
                 findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        controllerLocation = new ControllerLocation(this);
         user = JSONManager.instanceUserFromJson(
                 this.getIntent().getExtras().getString("jsonUser")
         );
-
+        controllerLocation = new ControllerLocation(this, user);
         /*handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -136,6 +138,8 @@ public class MainActivity extends AppCompatActivity
             }
         };*/
         handler = new Handler();
+
+        myEvents = controllerLocation;
     }
 
     public void updateMarkers(LocationMap[] locations) {
@@ -150,6 +154,15 @@ public class MainActivity extends AppCompatActivity
                         position(new LatLng(loc.getLat(), loc.getLng()))));
             }
         }
+    }
+
+    public void removeMarker(int id) {
+        markerMaps.get(id).remove();
+        markerMaps.remove(id);
+    }
+
+    public void clearMarkers() {
+        markerMaps.clear();
     }
 
     @Override
@@ -356,6 +369,13 @@ public class MainActivity extends AppCompatActivity
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         user.switchModeUser();
+                        if(user.getCurrentMode() == User.MODE_DRIVER) {
+                            gMap.clear();
+                            markerMaps.clear();
+                            Toast.makeText(getApplicationContext(),
+                                    "Intentando borrar los marcadores", Toast.LENGTH_SHORT);
+                            myEvents.onSwitchUserMode(getApplicationContext());
+                        }
                     }
                 });
         builder.setNegativeButton("Cancelar",

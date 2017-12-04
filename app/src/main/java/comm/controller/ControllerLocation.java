@@ -25,16 +25,19 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import org.json.JSONObject;
 
 import comm.locationmap.MainActivity;
+import comm.model.EventsMainActivity;
 import comm.model.JSONManager;
 import comm.model.LocationMap;
 import comm.model.OnEventListener;
+import comm.model.User;
 import comm.model.WebSocketConection;
 
 /**
  * Created by Alexander on 05/10/2017.
  */
 
-public class ControllerLocation implements LocationListener, OnEventListener {
+public class ControllerLocation implements LocationListener,
+        OnEventListener, EventsMainActivity {
 
 
 
@@ -45,30 +48,30 @@ public class ControllerLocation implements LocationListener, OnEventListener {
     Location lastKnownLocation = null;
 
     private WebSocketConection socketConection;
+    private Thread timer;
 
-    private Thread thread;
+    private User user;
 
     public static final int PERMISO_LOCALIZACION = 1;
     private static final int REQUEST_UPDATES = 2;
 
-    public ControllerLocation(Context mainActivity) {
+    public ControllerLocation(Context mainActivity, User user) {
         this.mainActivity = mainActivity;
         locationManager = (LocationManager) mainActivity.getSystemService(Context.LOCATION_SERVICE);
         provider = LocationManager.GPS_PROVIDER;
 
-        enableLocationUpdates();
+        this.user = user;
+
         socketConection = new WebSocketConection(this);
-        initVariables();
+        if(user.getCurrentMode() == User.MODE_PASSENGER) {
+            socketConection.getSocketPassenger().connect();
+        } else {
+            socketConection.getSocketDriver().connect();
+            enableLocationUpdates();
+        }
+
     }
 
-    private void initVariables() {
-        thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                socketConection.requestLocations();
-            }
-        });
-    }
 
     private void enableLocationUpdates() {
         if (ContextCompat.checkSelfPermission(mainActivity, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -155,13 +158,23 @@ public class ControllerLocation implements LocationListener, OnEventListener {
 
     }
 
+    @Override
+    public void onDriverDisconnect(int id) {
+        MainActivity m = (MainActivity)mainActivity;
+        m.removeMarker(id);
+    }
+
     private void setMyLocation() {
 
     }
 
     @Override
     public void onLocationChanged(Location location) {
-
+        if(user.getCurrentMode() == User.MODE_DRIVER) {
+            LocationMap loc = new LocationMap(user.getId(),
+                    location.getLatitude(), location.getLongitude());
+            socketConection.sendLocation(JSONManager.locationMapToJSONObject(loc));
+        }
     }
 
     @Override
@@ -179,10 +192,38 @@ public class ControllerLocation implements LocationListener, OnEventListener {
 
     }
 
-    public boolean startLocationRequest() {
-        if(socketConection.isConnected()) {
-            thread.start();
+    @Override
+    public void onSwitchUserMode(Context activity) {
+        if(user.getCurrentMode() == User.MODE_DRIVER) {
+            socketConection.getSocketPassenger().disconnect();
+            socketConection.getSocketDriver().connect();
+            /*timer = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Location lastLocation;
+                    LocationMap loc = null;
+                    while(user.getCurrentMode() == User.MODE_DRIVER) {
+                        lastLocation = getLocation();
+                        if(lastLocation != null) {
+                            loc = new LocationMap(user.getId(),
+                                    lastLocation.getLatitude(), lastLocation.getLongitude());
+                            socketConection.sendLocation(JSONManager.locationMapToJSONObject(loc));
+                        }
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+            timer.start();*/
+            if(!locationManager.isProviderEnabled(provider)) {
+                enableLocationUpdates();
+            }
         }
-        return false;
+        else {
+            locationManager.removeUpdates(this);
+        }
     }
 }
